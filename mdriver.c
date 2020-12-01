@@ -558,6 +558,9 @@ static int eval_mm_valid(trace_t *trace, int tracenum, range_t **ranges)
     for (i = 0;  i < trace->num_ops;  i++) {
 	index = trace->ops[i].index;
 	size = trace->ops[i].size;
+    printf("trace->ops[i].type %d\n",trace->ops[i].type);
+    printf("index = %d\n",index);
+    printf("size = %d\n",size);
 
         switch (trace->ops[i].type) {
 
