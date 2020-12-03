@@ -299,11 +299,14 @@ static void requestMoreSpace(size_t reqSize) {
   }
   newBlock = (BlockInfo*)UNSCALED_POINTER_SUB(mem_sbrk_result, WORD_SIZE);
   printf("newBlock = %p\n", newBlock);
+  
   /* initialize header, inherit TAG_PRECEDING_USED status from the
      previously useless last word however, reset the fake TAG_USED
      bit */
   prevLastWordMask = newBlock->sizeAndTags & TAG_PRECEDING_USED;
+  
   newBlock->sizeAndTags = totalSize | prevLastWordMask;
+  examine_heap();   
   // Initialize boundary tag.
   ((BlockInfo*)UNSCALED_POINTER_ADD(newBlock, totalSize - WORD_SIZE))->sizeAndTags = 
     totalSize | prevLastWordMask;
@@ -416,7 +419,7 @@ void* mm_malloc (size_t size) {
     }
     else
     {
-      printf("Separate block\n");
+      
       //size of the original block
       oldSize = SIZE(ptrFreeBlock->sizeAndTags);
       //Save the status of PRECEDING block
@@ -425,18 +428,24 @@ void* mm_malloc (size_t size) {
       ptrFreeBlock->sizeAndTags = reqSize  | TAG_USED | precedingBlockUseTag;
 
       //newBlock header
-      
       newBlock = (BlockInfo*)UNSCALED_POINTER_ADD(ptrFreeBlock, reqSize);
-      ////printf("newBlock: %p\n",newBlock);
-      newBlock->sizeAndTags = (oldSize - reqSize) | TAG_PRECEDING_USED;
-      newBlock->prev = NULL;
-      //boundary tag
-      *((size_t*)UNSCALED_POINTER_ADD(newBlock, SIZE(newBlock->sizeAndTags) - WORD_SIZE)) = newBlock->sizeAndTags;
 
-      removeFreeBlock(ptrFreeBlock);
-      printf("insert newBlock: %p\n",newBlock);
-      insertFreeBlock(newBlock);
+      //check if newBlock size is greater or equail to minimum block size
+      if ((oldSize - reqSize) >= MIN_BLOCK_SIZE)
+      {
+        printf("Separate block\n");
+        //newBlock header
+        newBlock = (BlockInfo*)UNSCALED_POINTER_ADD(ptrFreeBlock, reqSize);
+        ////printf("newBlock: %p\n",newBlock);
+        newBlock->sizeAndTags = (oldSize - reqSize) | TAG_PRECEDING_USED;
+        newBlock->prev = NULL;
+        //boundary tag
+        *((size_t*)UNSCALED_POINTER_ADD(newBlock, SIZE(newBlock->sizeAndTags) - WORD_SIZE)) = newBlock->sizeAndTags;
+        printf("insert newBlock: %p\n",newBlock);
+        insertFreeBlock(newBlock);
+      }
     }
+    removeFreeBlock(ptrFreeBlock);
     examine_heap();
     printf("mm_malloc Success\n");
     return &(ptrFreeBlock->next);
