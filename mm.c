@@ -85,7 +85,7 @@ typedef struct BlockInfo BlockInfo;
    BlockInfo in the free list. */
 #define FREE_LIST_HEAD *((BlockInfo **)mem_heap_lo())
 
-/* Size of a word on this architecture. */
+/* Size of a word on this architecture. In a x64 Machine, it is 8 bytes*/
 #define WORD_SIZE sizeof(void*)
 
 /* Minimum block size (to account for size header, next ptr, prev ptr,
