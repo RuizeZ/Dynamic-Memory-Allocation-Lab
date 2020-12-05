@@ -169,6 +169,7 @@ int main(int argc, char **argv)
 	    strcpy(tracedir, "./"); 
             tracefiles[0] = strdup(optarg);
             tracefiles[1] = NULL;
+            verbose = 2;
             break;
 	case 't': /* Directory where the traces are located */
 	    if (num_tracefiles == 1) /* ignore if -f already encountered */
@@ -320,6 +321,8 @@ int main(int argc, char **argv)
 	       p1*100, 
 	       p2*100, 
 	       perfindex);
+    printf("correct:%d\n", numcorrect);
+	printf("perfidx:%.0f\n", perfindex);
 	
     }
     else { /* There were errors */
@@ -462,7 +465,7 @@ static trace_t *read_trace(char *tracedir, char *filename)
     strcpy(path, tracedir);
     strcat(path, filename);
     if ((tracefile = fopen(path, "r")) == NULL) {
-	sprintf(msg, "Could not open %s in read_trace", path);
+	//sprintf(msg, "Could not open %s in read_trace", path);
 	unix_error(msg);
     }
     fscanf(tracefile, "%d", &(trace->sugg_heapsize)); /* not used */
@@ -558,6 +561,9 @@ static int eval_mm_valid(trace_t *trace, int tracenum, range_t **ranges)
     for (i = 0;  i < trace->num_ops;  i++) {
 	index = trace->ops[i].index;
 	size = trace->ops[i].size;
+    printf("\ntrace->ops[i].type %d\n",trace->ops[i].type);
+    printf("index = %d\n",index);
+    printf("size = %d\n",size);
 
         switch (trace->ops[i].type) {
 
@@ -604,6 +610,7 @@ static int eval_mm_valid(trace_t *trace, int tracenum, range_t **ranges)
     }
 
     /* As far as we know, this is a valid malloc package */
+    printf("correct\n");
     return 1;
 }
 
