@@ -419,14 +419,13 @@ int mm_init () {
 
 
 /* Allocate a block of size size and return a pointer to it. */
-void* mm_malloc (size_t size, int show) {
+void* mm_malloc (size_t size) {
   size_t reqSize;
   BlockInfo * ptrFreeBlock = NULL;
   size_t precedingBlockUseTag;
   size_t oldSize;
   BlockInfo * newBlock = NULL;
   BlockInfo * followingBlock;
-  GLobalShow = show;
   
   if (GLobalShow)
   {
@@ -485,21 +484,9 @@ void* mm_malloc (size_t size, int show) {
     }
     else
     {
+      //no block is needed to add to list
       ptrFreeBlock->sizeAndTags |= TAG_USED;
-      
-      //if the following block is not last byte
-      if (&followingBlock->sizeAndTags != (size_t*)UNSCALED_POINTER_SUB(mem_heap_hi(), WORD_SIZE - 1))
-      {
-        //set prev use bit to 0
-        followingBlock->sizeAndTags |= TAG_PRECEDING_USED;
-      }
-
-      //if the following block is last byte
-      else
-      {
-        // useless byte
-        followingBlock->sizeAndTags |= TAG_PRECEDING_USED;
-      }
+      followingBlock->sizeAndTags |= TAG_PRECEDING_USED;
     }
     
     
@@ -528,15 +515,16 @@ void* mm_malloc (size_t size, int show) {
 }
 
 /* Free the block referenced by ptr. */
-void mm_free (void *ptr, int show) {
+void mm_free (void *ptr) {
   size_t payloadSize;
   BlockInfo * blockInfo;
   BlockInfo * followingBlock;
-  GLobalShow = show;
   // Implement mm_free.  You can change or remove the declaraions
   // above.  They are included as minor hints.
   /*keep the info of the current struct*/
   blockInfo = (BlockInfo*)UNSCALED_POINTER_SUB(ptr, WORD_SIZE);
+  printf("blockInfo: %p\n", blockInfo);
+  printf("blockInfo: %ld\n", blockInfo->sizeAndTags);
   if (GLobalShow)
   {
     examine_heap();
@@ -586,5 +574,130 @@ int mm_check() {
 // Extra credit.
 void* mm_realloc(void* ptr, size_t size) {
   // ... implementation here ...
-  return NULL;
+  BlockInfo * reallocblockInfo;
+  BlockInfo * nextblockInfo;
+  BlockInfo * leftblockafterrealloc;
+  BlockInfo * followingBlock;
+  BlockInfo * new_block;
+  size_t oldsize;
+  size_t reqSize;
+  size_t precedingBlockUseTag;
+  size_t extrasize;
+  size_t sizewithheader;
+
+  //If ptr is NULL, then the call is equivalent to malloc(size), for all values of size
+  if (ptr == NULL)
+  {
+    mm_malloc(size);
+  }
+  //if size is equal to zero, and ptr is not NULL, then the call is equivalent to free(ptr).
+  else if (size == 0)
+  {
+    mm_free(ptr);
+  }
+  else
+  {
+    printf("start realloc\n");
+    sizewithheader = size + WORD_SIZE;
+    // Note that we don't need to boundary tag when the block is used!
+    if (sizewithheader <= MIN_BLOCK_SIZE) {
+      // Make sure we allocate enough space for a blockInfo in case we
+      // free this block (when we free this block, we'll need to use the
+      // next pointer, the prev pointer, and the boundary tag).
+      reqSize = MIN_BLOCK_SIZE;
+    } else {
+      // Round up for correct alignment
+      reqSize = ALIGNMENT * ((sizewithheader + ALIGNMENT - 1) / ALIGNMENT);
+    }
+    printf("reqSize: %ld\n", reqSize);
+    reallocblockInfo = (BlockInfo*)UNSCALED_POINTER_SUB(ptr, WORD_SIZE);
+    precedingBlockUseTag = reallocblockInfo->sizeAndTags & TAG_PRECEDING_USED;
+    printf("reallocblockInfo: %p\n", reallocblockInfo);
+    examine_heap();
+    //if reqSize > ptr->size
+    if (reqSize > SIZE(reallocblockInfo->sizeAndTags))
+    {
+      extrasize = reqSize - SIZE(reallocblockInfo->sizeAndTags);
+      nextblockInfo = (BlockInfo*)UNSCALED_POINTER_ADD(reallocblockInfo, SIZE(reallocblockInfo->sizeAndTags));
+      printf("nextblockInfo: %p\n", nextblockInfo);
+      //if the next block is free and size is enough
+      if ((nextblockInfo->sizeAndTags & TAG_USED) == 0 && SIZE(nextblockInfo->sizeAndTags) >= extrasize)
+      {
+        printf("the next block is free and size is enough\n");
+      
+        //begin to realloc
+        removeFreeBlock(nextblockInfo);
+
+        //change the status of the next block
+
+        //if next block size > extrasize, the size left after the realloc needs to be added back to the free list
+        if ((SIZE(nextblockInfo->sizeAndTags) - extrasize) >= MIN_BLOCK_SIZE)
+        {
+          printf("the size left after the realloc needs to be added back to the free list\n");
+          examine_heap();
+          reallocblockInfo->sizeAndTags = reqSize | precedingBlockUseTag | TAG_USED;
+          printf("reallocblockInfo->sizeAndTags: %ld\n", SIZE(reallocblockInfo->sizeAndTags));
+          printf("reallocblockInfo->sizeAndTags: %ld\n", reallocblockInfo->sizeAndTags);
+          //left block header
+          leftblockafterrealloc = (BlockInfo*)UNSCALED_POINTER_ADD(reallocblockInfo, SIZE(reallocblockInfo->sizeAndTags));
+          printf("leftblockafterrealloc->sizeAndTags: %p\n", leftblockafterrealloc);
+          leftblockafterrealloc->sizeAndTags = (SIZE(nextblockInfo->sizeAndTags) - extrasize) | TAG_PRECEDING_USED;
+          printf("leftblockafterrealloc->sizeAndTags: %ld\n", leftblockafterrealloc->sizeAndTags);
+          //boundary tag
+          *((size_t*)UNSCALED_POINTER_ADD(leftblockafterrealloc, SIZE(leftblockafterrealloc->sizeAndTags) - WORD_SIZE)) = leftblockafterrealloc->sizeAndTags;
+          // printf("insert newBlock: %p\n",newBlock);
+          insertFreeBlock(leftblockafterrealloc);
+          examine_heap();
+          printf("Payload of %p: %p -> %p\n", reallocblockInfo, &(reallocblockInfo->next), ((size_t*)UNSCALED_POINTER_ADD(reallocblockInfo, SIZE(reallocblockInfo->sizeAndTags) - 1)));
+        }
+
+        //if there is no memory left, change the status of the next block
+        else
+        {
+          reallocblockInfo->sizeAndTags = (SIZE(reallocblockInfo->sizeAndTags) + SIZE(nextblockInfo->sizeAndTags)) | precedingBlockUseTag | TAG_USED;
+          followingBlock = (BlockInfo*)UNSCALED_POINTER_ADD(reallocblockInfo, SIZE(reallocblockInfo->sizeAndTags));
+          followingBlock->sizeAndTags |= TAG_PRECEDING_USED;
+        }
+        printf("&(reallocblockInfo->next): %p\n", &(reallocblockInfo->next));
+        return &(reallocblockInfo->next);
+      }
+      else
+      {
+        printf("next block is not free or not enough\n");
+        new_block = mm_malloc(reqSize);
+        for (size_t i = 0; i <= SIZE(reallocblockInfo->sizeAndTags); i++)
+        {
+          /* code */
+        }
+        
+        mm_free((void*)&(nextblockInfo->next));
+        examine_heap();
+        mm_realloc(ptr, size);
+      }
+      
+    }
+
+    //if reqSize < ptr->size
+    else if (reqSize < SIZE(reallocblockInfo->sizeAndTags))
+    {
+      oldsize = SIZE(reallocblockInfo->sizeAndTags);
+      //if the block left is big enough to be in the list
+      if (oldsize - reqSize >= MIN_BLOCK_SIZE)
+      {
+        reallocblockInfo->sizeAndTags = reqSize | precedingBlockUseTag | TAG_USED;
+        //insert the block
+        leftblockafterrealloc = (BlockInfo*)UNSCALED_POINTER_ADD(reallocblockInfo, SIZE(reallocblockInfo->sizeAndTags));
+        leftblockafterrealloc->sizeAndTags = (oldsize - reqSize) | TAG_PRECEDING_USED;
+        //boundary tag
+        *((size_t*)UNSCALED_POINTER_ADD(leftblockafterrealloc, SIZE(leftblockafterrealloc->sizeAndTags) - WORD_SIZE)) = leftblockafterrealloc->sizeAndTags;
+        insertFreeBlock(leftblockafterrealloc);
+        followingBlock = (BlockInfo*)UNSCALED_POINTER_ADD(leftblockafterrealloc, SIZE(leftblockafterrealloc->sizeAndTags));
+        followingBlock->sizeAndTags ^= TAG_PRECEDING_USED;
+        coalesceFreeBlock(leftblockafterrealloc);
+      }
+      //if there is no memory left, change the status of the next block
+      return &(reallocblockInfo->next);
+    }
+    
+  }
 }

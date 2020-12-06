@@ -581,7 +581,7 @@ static int eval_mm_valid(trace_t *trace, int tracenum, range_t **ranges)
         case ALLOC: /* mm_malloc */
 
 	    /* Call the student's malloc */
-	    if ((p = mm_malloc(size, show)) == NULL) {
+	    if ((p = mm_malloc(size)) == NULL) {
         show = 0;
 		malloc_error(tracenum, i, "mm_malloc failed.");
 		return 0;
@@ -612,7 +612,7 @@ static int eval_mm_valid(trace_t *trace, int tracenum, range_t **ranges)
 	    /* Remove region from list and call student's free function */
 	    p = trace->blocks[index];
 	    remove_range(ranges, p);
-	    mm_free(p,show);
+	    mm_free(p);
 	    break;
 
 	default:
@@ -658,7 +658,7 @@ static double eval_mm_util(trace_t *trace, int tracenum, range_t **ranges)
 	    index = trace->ops[i].index;
 	    size = trace->ops[i].size;
 
-	    if ((p = mm_malloc(size, 0)) == NULL) 
+	    if ((p = mm_malloc(size)) == NULL) 
 		app_error("mm_malloc failed in eval_mm_util");
 	    
 	    /* Remember region and size */
@@ -679,7 +679,7 @@ static double eval_mm_util(trace_t *trace, int tracenum, range_t **ranges)
 	    size = trace->block_sizes[index];
 	    p = trace->blocks[index];
 	    
-	    mm_free(p,0);
+	    mm_free(p);
 	    
 	    /* Keep track of current total size
 	     * of all allocated blocks */
@@ -719,7 +719,7 @@ static void eval_mm_speed(void *ptr)
         case ALLOC: /* mm_malloc */
             index = trace->ops[i].index;
             size = trace->ops[i].size;
-            if ((p = mm_malloc(size, 0)) == NULL)
+            if ((p = mm_malloc(size)) == NULL)
 		app_error("mm_malloc error in eval_mm_speed");
             trace->blocks[index] = p;
             break;
@@ -727,7 +727,7 @@ static void eval_mm_speed(void *ptr)
         case FREE: /* mm_free */
             index = trace->ops[i].index;
             block = trace->blocks[index];
-            mm_free(block,0);
+            mm_free(block);
             break;
 
 	default:
