@@ -343,7 +343,9 @@ static int add_range(range_t **ranges, char *lo, int size,
 	char *hi = lo + size - 1;
 	range_t *p;
 	char msg[MAXLINE];
-	printf("size: %d\n", size);
+	// printf("ranges size: %d\n", size);
+	// printf("lo: %p\n", lo);
+	// printf("hi: %p\n", hi);
 
 	assert(size > 0);
 
@@ -366,9 +368,8 @@ static int add_range(range_t **ranges, char *lo, int size,
 
 	/* The payload must not overlap any other payloads */
 	for (p = *ranges;  p != NULL;  p = p->next) {
-		printf("p: %ld\n", *p);
-		printf("p->lo: %p\n", p->lo);
-		printf("p->hi: %p\n", p->hi);
+		// printf("p->lo: %p\n", p->lo);
+		// printf("p->hi: %p\n", p->hi);
 		if ((lo >= p->lo && lo <= p-> hi) ||
 				(hi >= p->lo && hi <= p->hi)) {
 			sprintf(msg, "Payload (%p:%p) overlaps another payload (%p:%p)\n",
@@ -563,9 +564,9 @@ static int eval_mm_valid(trace_t *trace, int tracenum, range_t **ranges)
 	for (i = 0;  i < trace->num_ops;  i++) {
 		index = trace->ops[i].index;
 		size = trace->ops[i].size;
-		printf("\ntrace->ops[i].type %d\n",trace->ops[i].type);
-    	printf("index = %d\n",index);
-    	printf("size = %d\n",size);
+		// printf("\ntrace->ops[i].type %d\n",trace->ops[i].type);
+    	// printf("index = %d\n",index);
+    	// printf("size = %d\n",size);
 		switch (trace->ops[i].type) {
 
 			case ALLOC: /* mm_malloc */
